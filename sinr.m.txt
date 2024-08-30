@@ -1,0 +1,43 @@
+function sinr_matrix = sinr(distance_matrix)
+    % Constants
+    P_tx_dBm = 20;   % Transmit power in dBm
+    G_tx_dBi = 18;   % Transmit antenna gain in dBi
+    G_rx_dBi = 0;    % Receive antenna gain in dBi
+    f_GHz = 3.5;     % Carrier frequency in GHz
+    c = 3e8;         % Speed of light in m/s
+    n = 2.5;           % Path loss exponent
+    I_dBm = -100;    % Total interference power in dBm
+    k = 1.38e-23;    % Boltzmann's constant
+    T = 290;         % Temperature in Kelvin
+    B_MHz = 100;     % Bandwidth in MHz
+    
+    % Convert dBm to Watts
+    P_tx_W = 10^((P_tx_dBm - 30) / 10);
+    I_W = 10^((I_dBm - 30) / 10);
+    
+    % Convert dBi to linear scale
+    G_tx = 10^(G_tx_dBi / 10);
+    G_rx = 10^(G_rx_dBi / 10);
+    
+    % Convert GHz to Hz and MHz to Hz
+    f_Hz = f_GHz * 1e9;
+    B_Hz = B_MHz * 1e6;
+    
+    % Calculate wavelength
+    lambda_m = c / f_Hz;
+    
+    % Calculate noise power in Watts
+    N_W = k * T * B_Hz;
+
+    % Calculate path loss
+    path_loss = (lambda_m ./ (4 * pi * distance_matrix)).^n;
+    
+    % Calculate received signal power
+    P_rx_W = P_tx_W * G_tx * G_rx * path_loss;
+    
+    % Calculate SINR
+    sinr_linear = P_rx_W ./ (I_W + N_W);
+    
+    sinr_matrix = log2(1 + sinr_linear);
+end
+

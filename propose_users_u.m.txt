@@ -1,0 +1,69 @@
+function Proposals_u = propose_users_u(mvno_preference_u, inp_preference_profile, total_channel_requirements, Q)
+    % Initialize an empty array to store the indices of non-zero element
+    Proposals_u = [];
+    
+    binary_array = true(1, size(inp_preference_profile, 2));
+    
+    mvno_preference_profile = repmat(mvno_preference_u', 25, 1);
+
+    max_iterations = 30;
+
+    % Stage 2: High-Level Matching - Service Selection
+    for iter = 1:max_iterations
+        for i = 1:size(mvno_preference_profile, 1)
+            
+            if total_channel_requirements(i) == 0
+                continue;
+            end
+
+            if binary_array(i) == false
+                continue; % Skip the current iteration
+            end
+
+            for j = 1:size(mvno_preference_profile, 2)
+                if mvno_preference_profile(i, j) ~= -1
+                   n = mvno_preference_profile(i, j);
+                   break; % Exit loop once a non-negative value is found
+                end
+            end
+
+            l = total_channel_requirements(i);
+
+            % Check if the true MVNO can serve more users
+            if Q(n) >= l
+                % Decrement available channels
+                Q(n) = Q(n) - l;
+                % Add proposal to Proposals array
+                Proposals_u = [Proposals_u; [i, n]];
+                binary_array(i) = false;
+            else
+                % Find the index of user i in the INP preference profile
+                x = find(inp_preference_profile(n, :) == i);
+                % Check proposals array for users paired with this specific MVNO where the paired user index is greater than x
+                for idx = size(Proposals_u, 1):-1:1
+                    if Proposals_u(idx, 2) == n && any(find(inp_preference_profile(n, :) == Proposals_u(idx, 1)) > x)
+                        % Remove the less preferred user from Proposals
+                        removed_mvno = Proposals_u(idx, 1);
+                        Proposals_u(idx, :) = [];
+                        % Mark the binary_array for the removed user as true
+                        binary_array(removed_mvno) = true;
+                        % Add back the channels required by the removed user to Q
+                        Q(n) = Q(n) + total_channel_requirements(removed_mvno);
+                    end
+                end
+
+                % Check if Q(k) can be made greater than l after removing less preferred users
+                if Q(n) >= l
+                    % Decrement available channels
+                    Q(n) = Q(n) - l;
+                    % Add proposal to Proposals array
+                    Proposals_u = [Proposals_u; [i, n]];
+                    binary_array(i) = false;
+                else
+                    % Remove the MVNO from the user preference list of user i
+                    mvno_preference_profile(i, j) = -1;
+                end
+            end
+        end
+    end
+end
